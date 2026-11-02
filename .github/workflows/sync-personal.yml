@@ -1,5 +1,6 @@
 name: Sync personal repository
 
+# Sync these branches without force-pushing over independent personal commits.
 on:
   push:
     branches:
