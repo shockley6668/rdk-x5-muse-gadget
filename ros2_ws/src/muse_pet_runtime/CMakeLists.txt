@@ -15,6 +15,7 @@ set(HAND vendor/hand_lmk_detection)
 set(GESTURE vendor/hand_gesture_detection)
 add_executable(vision_runtime
   src/vision_runtime.cpp
+  src/stereo_panorama.cpp
   ../muse_pet_camera_throttle/src/camera_throttle.cpp
   ../muse_pet_camera_throttle/src/depth_input.cpp
   ${HAND}/src/ai_msg_manage.cpp ${HAND}/src/hand_lmk_det_node.cpp ${HAND}/src/hand_lmk_output_parser.cpp

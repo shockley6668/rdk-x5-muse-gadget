@@ -12,6 +12,7 @@ Environment=MUSE_UI_AUDIO=on
 Environment=MUSE_UI_MIRROR=0
 Environment=PULSE_SOURCE=alsa_input.platform-snd0.stereo-fallback
 Environment=PULSE_SINK=muse_output
+EnvironmentFile=-/etc/default/muse-ui-tts
 ExecStart=/opt/muse-ui/venv/bin/python /opt/muse-ui/backend.py
 RuntimeDirectory=muse-ui
 RuntimeDirectoryMode=0755

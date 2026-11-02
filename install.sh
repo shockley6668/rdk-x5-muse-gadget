@@ -47,7 +47,7 @@ if [[ "$source_dir" != "$target_dir" ]]; then
     tar -C "$source_dir" --exclude="./.git" --exclude="./build" --exclude="./venv" --exclude="./.venv" --exclude="./cad" --exclude="./.vscode" --exclude="./ros2_ws/build" --exclude="./ros2_ws/install" --exclude="./ros2_ws/log" --exclude="__pycache__" -cf - . | tar -C "$target_dir" -xf -
 fi
 python3 -m venv --system-site-packages "$target_dir/venv"
-"$target_dir/venv/bin/python" -m pip install 'websockets==16.0' 'edge-tts==7.2.8'
+"$target_dir/venv/bin/python" -m pip install 'websockets==16.0' 'edge-tts==7.3.1'
 cmake -S "$target_dir/simulator" -B "$target_dir/build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
 cmake --build "$target_dir/build" --parallel 4
 cd "$target_dir"
@@ -78,6 +78,11 @@ Wants=muse-vision-runtime.service
 After=muse-vision-runtime.service
 [Service]
 Environment=MUSE_PET_UNIFIED_RUNTIME=1
+CONF
+    install -d /etc/systemd/system/muse-pet-preview.service.d
+    cat > /etc/systemd/system/muse-pet-preview.service.d/30-panorama.conf <<'CONF'
+[Service]
+Environment=MUSE_PET_PANORAMA=1
 CONF
 fi
 install -d -m 700 -o sunrise -g sunrise /home/sunrise/.config/pulse

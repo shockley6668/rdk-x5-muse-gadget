@@ -213,7 +213,7 @@ def make_voice_payload(pcm):
 def audio_command(*args):
     routing = [f"{key}={os.environ[key]}" for key in ("PULSE_SOURCE", "PULSE_SINK")
                if os.environ.get(key)]
-    return ["runuser", "-u", "sunrise", "--", "env",
+    return ["runuser", "-u", "sunrise", "--", "env", "-u", "MIMO_API_KEY",
             "XDG_RUNTIME_DIR=/run/user/1000", *routing, *args]
 
 
@@ -427,6 +427,12 @@ class Bridge:
                 self.set_state(face="idle", caption="", level="0")
             else:
                 self.turn_task = asyncio.create_task(self.reply(make_voice_payload(pcm)))
+        elif action == "cancel" and self.recording:
+            process, self.recording = self.recording, None
+            with contextlib.suppress(ProcessLookupError):
+                process.terminate()
+            await self.record_task
+            self.set_state(face="idle", caption="", level="0")
         elif action == "text" and isinstance(cmd.get("message"), str):
             if self.turn_task and not self.turn_task.done():
                 return
@@ -497,6 +503,18 @@ class Bridge:
             text = text[:12000]
             pages = caption_pages(text)
             boundaries = []
+            mimo_key = os.environ.get("MIMO_API_KEY", "").strip()
+            used_mimo = False
+            if mimo_key:
+                try:
+                    from mimo_tts import synthesize
+                    audio = await asyncio.to_thread(synthesize, text, mimo_key)
+                    wav.write_bytes(audio)
+                    used_mimo = True
+                    LOG.info("MiMo TTS synthesized reply")
+                except Exception as exc:
+                    # Avoid logging credentials, request bodies or service errors.
+                    LOG.warning("MiMo TTS failed (%s); using Edge TTS", type(exc).__name__)
             async def synthesize():
                 cursor = 0
                 with mp3.open("wb") as output:
@@ -509,17 +527,19 @@ class Bridge:
                             if pos >= 0:
                                 boundaries.append((part["offset"] / 10000000, pos))
                                 cursor = pos + len(part.get("text", ""))
-            await asyncio.wait_for(synthesize(), 90)
-            convert = await asyncio.create_subprocess_exec(
-                "ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3), str(wav),
-                stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE)
-            _, err = await convert.communicate()
-            if convert.returncode:
-                raise RuntimeError("TTS audio decode failed")
+            if not used_mimo:
+                await asyncio.wait_for(synthesize(), 90)
+                convert = await asyncio.create_subprocess_exec(
+                    "ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3), str(wav),
+                    stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE)
+                _, err = await convert.communicate()
+                if convert.returncode:
+                    raise RuntimeError("TTS audio decode failed")
             wav.chmod(0o644)
             # Derive the mouth meter from the actual decoded playback audio.
             with wave.open(str(wav), "rb") as f:
                 rate, channels = f.getframerate(), f.getnchannels()
+                duration = f.getnframes() / rate
                 pcm = f.readframes(f.getnframes())
             self.player = await asyncio.create_subprocess_exec(
                 *audio_command("paplay", str(wav)), stderr=asyncio.subprocess.PIPE)
@@ -528,7 +548,8 @@ class Bridge:
             shown = -1
             while not playback.done():
                 elapsed = time.monotonic() - started
-                pos = next((p for t, p in reversed(boundaries) if t <= elapsed), 0)
+                pos = (next((p for t, p in reversed(boundaries) if t <= elapsed), 0)
+                       if boundaries else min(len(text) - 1, int(len(text) * elapsed / max(duration, .01))))
                 page = next((i for i, (a, b, _) in enumerate(pages) if a <= pos < b), 0)
                 a = int(elapsed * rate) * channels * 2
                 sample = pcm[a:a + int(rate * .06) * channels * 2]

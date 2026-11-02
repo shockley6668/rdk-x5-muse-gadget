@@ -37,7 +37,7 @@ The launcher uses 1088×1280 and realtime timestamps. UDP is the existing fallba
 a shared-image mode connects the camera, rate limiter, models and JPEG codec
 using `HbmMsg1080P`. See [image transport](docs/PET-DEMO.md#shared-image-mode)
 for activation and validation limits.
-The pet uses the left image for perception and monitors both channels.
+The pet monitors both camera channels.
 
 The perception bridge is optional. It needs TROS Humble and `colcon`; gesture
 and YOLO packages and their model files must already be installed on the X5.
@@ -67,11 +67,23 @@ run in one C++ process; changing pages only changes frame routing. Open
 The unified runtime uses the fixed camera/model preset documented in
 [Pet demo](docs/PET-DEMO.md#depth-page).
 
-A compatible microphone and speaker are needed for voice. The current plan uses a CTIA 3.5 mm TRRS microphone and a USB audio speaker. Set the recording device with `PULSE_SOURCE` and the playback device with `PULSE_SINK` in [muse-ui.service](muse-ui.service). The newly selected audio hardware has not been tested on the X5.
+The unified runtime combines the stereo substreams into one preview for a
+single YOLO model. Hand recognition still uses the left camera; depth uses the
+original stereo pair. The preview fills the screen by cropping vertically.
+The edge blend is approximate and can show parallax near the seam; it is not a
+depth-corrected panorama. The optional `camera.capture` tool is experimental:
+local snapshots have been tested, but a complete Muse cloud invocation has not.
+
+A compatible microphone and speaker are needed for voice. A 3.5 mm microphone
+and USB speaker have been tested on the development X5. Set `PULSE_SOURCE`
+and `PULSE_SINK` in [muse-ui.service](muse-ui.service) for your hardware.
 
 ## Controls
 
 - Tap the avatar to pet it. Hold the microphone icon to record; release to send.
+- Optional local wake word: run `sudo bash scripts/install-wakeword.sh` after
+  installing the UI, then say “Hello Muse”. Wait for the beep before speaking.
+  The local voice detector waits for a pause before sending the recording.
 - Swipe left for the live recognition view. Tap **Controls** for feeding,
   play, stretching, sleep, focus and find-object controls; **Vision** returns to the image.
 - Swipe left once more for **Depth**. Depth inference runs only while this page is open;
@@ -79,6 +91,8 @@ A compatible microphone and speaker are needed for voice. The current plan uses 
 - Tap the speaker button to mute or unmute.
 - Tap **Desktop** or press **Esc** to close the window.
 - Double-click **Muse** on the desktop to reopen it.
+
+For optional MiMo speech and wake-word settings, see [Voice setup](docs/VOICE.md).
 
 Control buttons return to the avatar. Play dances, Stretch yawns and reaches up,
 Look scans the room, and petting gives a quiet cuddle with hearts. Feed chews,

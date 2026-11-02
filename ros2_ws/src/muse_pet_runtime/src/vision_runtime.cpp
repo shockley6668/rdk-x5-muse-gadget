@@ -15,6 +15,7 @@
 
 std::shared_ptr<rclcpp::Node> make_camera_throttle(const rclcpp::NodeOptions &);
 std::shared_ptr<rclcpp::Node> make_depth_input(const rclcpp::NodeOptions &);
+std::shared_ptr<rclcpp::Node> make_stereo_panorama(const rclcpp::NodeOptions &);
 using Parameter = rclcpp::Parameter;
 
 static rclcpp::NodeOptions options(const std::string &name,
@@ -28,7 +29,7 @@ static rclcpp::NodeOptions options(const std::string &name,
   // intra-process mode globally: it would disable those loans in Humble.
   if (name == "muse_body" || name == "muse_hands" || name == "muse_yolo") {
     const std::string topic = name == "muse_yolo" ?
-        "/muse/camera/objects/hbmem" : "/muse/camera/left/hbmem";
+        "/muse/camera/panorama/model/hbmem" : "/muse/camera/left/hbmem";
     auto arguments = result.arguments();
     arguments.insert(arguments.end(), {"-r", "/hbmem_img:=" + topic, "-r", "/image_raw:=" + topic});
     result.arguments(arguments);
@@ -97,6 +98,7 @@ int main(int argc, char **argv) {
       {"fps", 10.0}, {"preview_fps", 30.0}, {"image_transport", "shared_mem"},
       {"left_topic", "/sub_hbmem_left_img"}, {"right_topic", "/sub_hbmem_right_img"}}, "info")));
     runtime.add(make_depth_input(options("muse_depth_input", {{"fps", 30.0}})));
+    runtime.add(make_stereo_panorama(options("muse_stereo_panorama", {})));
     runtime.component("mono2d_body_detection", "Mono2dBodyDetNode", options("muse_body", {
       {"model_file_name", libpath("mono2d_body_detection", "multitask_body_head_face_hand_kps_960x544.hbm")},
       {"model_type", 0}, {"track_mode", 1}, {"image_gap", 0}, {"is_shared_mem_sub", 1},
@@ -114,8 +116,8 @@ int main(int argc, char **argv) {
     if (!yolo) throw std::runtime_error("MUSE_RUNTIME_YOLO_CONFIG is not prepared");
     runtime.component("dnn_node_example", "DnnExampleNode", options("muse_yolo", {
       {"feed_type", 1}, {"is_shared_mem_sub", 1},
-      {"sharedmem_img_topic_name", "/muse/camera/objects/hbmem"},
-      {"ros_img_topic_name", "/muse/camera/objects/hbmem"}, {"config_file", std::string(yolo)},
+      {"sharedmem_img_topic_name", "/muse/camera/panorama/model/hbmem"},
+      {"ros_img_topic_name", "/muse/camera/panorama/model/hbmem"}, {"config_file", std::string(yolo)},
       {"msg_pub_topic_name", "/muse/objects"}, {"dump_render_img", 0}}));
     const auto stereo = ament_index_cpp::get_package_prefix("hobot_stereonet") +
         "/share/hobot_stereonet/config/DStereoV2.4_int8.bin";

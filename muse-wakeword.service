@@ -1,0 +1,19 @@
+[Unit]
+Description=Local Hello Muse wake word
+Wants=muse-ui.service
+After=muse-ui.service
+
+[Service]
+Type=simple
+User=sunrise
+Group=sunrise
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=PULSE_SOURCE=alsa_input.platform-snd0.stereo-fallback
+Environment=PULSE_SINK=muse_output
+Environment=OMP_NUM_THREADS=1
+ExecStart=/opt/muse-ui/venv/bin/python /opt/muse-ui/wakeword.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target

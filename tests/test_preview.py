@@ -12,11 +12,20 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "ros2_ws/src/muse_pet_vision"))
 from muse_pet_vision.preview import prepare_viewer
-from muse_pet_vision.preview_frames import OverlayCache, render_screen
+from muse_pet_vision.preview_frames import OverlayCache, render_screen, translate_left_gestures
 from muse_pet_vision.preview_demand import latest_ready, screen_active, web_active
 
 
 class PreviewTests(unittest.TestCase):
+    def test_left_hand_coordinates_translate_without_mutating_source(self):
+        message = NS(targets=[NS(rois=[NS(rect=NS(x_offset=20))],
+                                 points=[NS(point=[NS(x=30.0)])])])
+        translated = translate_left_gestures(message)
+        self.assertEqual(translated.targets[0].rois[0].rect.x_offset, 76)
+        self.assertEqual(translated.targets[0].points[0].point[0].x, 86)
+        self.assertEqual(message.targets[0].rois[0].rect.x_offset, 20)
+        self.assertIsNone(translate_left_gestures(None))
+
     def test_screen_lease_expires_after_closed_or_crashed_frontend(self):
         with tempfile.TemporaryDirectory() as tmp:
             lease = Path(tmp) / "muse-preview.active"
@@ -156,6 +165,22 @@ class PreviewTests(unittest.TestCase):
         self.assertTrue(np.array_equal(output[:, 104:376], decoded))
         self.assertFalse(output[:, :104].any())
         self.assertFalse(output[:, 376:].any())
+
+    @unittest.skipUnless(importlib.util.find_spec("cv2"), "OpenCV is installed on X5")
+    def test_panorama_fills_screen_and_transforms_overlays(self):
+        import cv2
+        import numpy as np
+        source = np.full((320, 384, 3), 17, dtype=np.uint8)
+        source[:, 56:328] = (40, 60, 80)
+        _, jpeg = cv2.imencode('.jpg', source, [cv2.IMWRITE_JPEG_QUALITY, 100])
+        target = NS(type='person', attributes=[], points=[], rois=[NS(
+            type='person', rect=NS(x_offset=100, y_offset=100, width=80, height=80))])
+        output = render_screen(bytes(jpeg), [NS(targets=[target]), None], fill_panorama=True)
+        self.assertEqual(output.shape, (320, 480, 3))
+        self.assertGreater(int(output[160, 0].sum()), 50)
+        self.assertGreater(int(output[160, -1].sum()), 50)
+        self.assertTrue(((output[40:110, 60:100, 1] > 200) &
+                         (output[40:110, 60:100, 2] < 180)).any())
 
     def test_runtime_copy_enables_both_views_without_mutating_vendor_files(self):
         with tempfile.TemporaryDirectory() as tmp:

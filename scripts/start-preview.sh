@@ -18,7 +18,12 @@ case "${MUSE_PET_THROTTLE:-true}" in
 esac
 if [[ "$MUSE_PET_TRANSPORT" == shm ]]; then
     case "${MUSE_PET_THROTTLE:-true}" in
-        true|1) left_topic=/muse/camera/preview/hbmem ;;
+        true|1)
+            left_topic=/muse/camera/preview/hbmem
+            if [[ "${MUSE_PET_PANORAMA:-0}" == 1 ]]; then
+                left_topic=/muse/camera/panorama/preview/hbmem
+            fi
+            ;;
         *) echo 'Shared preview requires MUSE_PET_THROTTLE=true.' >&2; exit 2 ;;
     esac
 fi

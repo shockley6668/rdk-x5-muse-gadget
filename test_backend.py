@@ -6,7 +6,7 @@ import tempfile
 import unittest
 import wave
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from backend import Bridge, ChatSession, make_voice_payload
 from pet import PetEngine
@@ -20,6 +20,20 @@ class FakeBridge:
 
 
 class Tests(unittest.IsolatedAsyncioTestCase):
+    async def test_cancel_discards_recording_without_sending(self):
+        with tempfile.TemporaryDirectory() as directory, patch("backend.RUNTIME", Path(directory)):
+            bridge = Bridge()
+            process = MagicMock()
+            bridge.recording = process
+            bridge.record_task = asyncio.get_running_loop().create_future()
+            bridge.record_task.set_result(b"a" * 32000)
+            bridge.set_state(face="listening")
+            await bridge.command({"action": "cancel"})
+            process.terminate.assert_called_once()
+            self.assertIsNone(bridge.recording)
+            self.assertIsNone(bridge.turn_task)
+            self.assertEqual(bridge.state["face"], "idle")
+
     async def test_unchanged_state_skips_file_writes_but_keeps_heartbeat_and_immediate_changes(self):
         with tempfile.TemporaryDirectory() as directory, patch("backend.RUNTIME", Path(directory)), \
              patch("backend.time.monotonic", return_value=10.0) as clock:
