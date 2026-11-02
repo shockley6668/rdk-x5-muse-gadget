@@ -6,13 +6,15 @@ on:
     branches:
       - main
       - feat/desktop-pet-vision
+  schedule:
+    - cron: '17 * * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: sync-personal-${{ github.ref }}
+  group: sync-personal
   cancel-in-progress: false
 
 jobs:
@@ -24,14 +26,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Fast-forward personal branch
+      - name: Fast-forward personal branches
         env:
           MIRROR_DEPLOY_KEY: ${{ secrets.PERSONAL_MIRROR_DEPLOY_KEY }}
         shell: bash
         run: |
           set -euo pipefail
           test -n "$MIRROR_DEPLOY_KEY"
-          test "$GITHUB_REF_TYPE" = branch
           key="$RUNNER_TEMP/muse-mirror-key"
           hosts="$RUNNER_TEMP/muse-github-known-hosts"
           trap 'rm -f "$key" "$hosts"' EXIT
@@ -39,5 +40,12 @@ jobs:
           printf '%s\n' "$MIRROR_DEPLOY_KEY" > "$key"
           printf '%s\n' 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$hosts"
           export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o UserKnownHostsFile=$hosts -o StrictHostKeyChecking=yes"
-          git push git@github.com:shockley6668/rdk-x5-muse-gadget.git \
-            "$GITHUB_SHA:refs/heads/$GITHUB_REF_NAME"
+          git fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main \
+            +refs/heads/feat/desktop-pet-vision:refs/remotes/origin/feat/desktop-pet-vision
+          destination=git@github.com:shockley6668/rdk-x5-muse-gadget.git
+          result=0
+          for branch in main feat/desktop-pet-vision; do
+            git push "$destination" "refs/remotes/origin/$branch:refs/heads/$branch" || result=1
+          done
+          exit "$result"
