@@ -38,7 +38,7 @@ esac
 [[ -r /var/lib/musegadget/pairing.json ]] || { echo 'Pair the Linux Muse SDK first.'; exit 1; }
 id sunrise >/dev/null
 export DEBIAN_FRONTEND=noninteractive
-apt-get install -y --no-install-recommends libsdl2-dev libx11-dev ninja-build build-essential pkg-config cmake python3-venv python3-cryptography ffmpeg pulseaudio-utils xdotool x11-utils
+apt-get install -y --no-install-recommends libsdl2-dev libx11-dev ninja-build build-essential pkg-config cmake python3-venv python3-cryptography python3-numpy ffmpeg pulseaudio-utils xdotool x11-utils
 if [[ "$install_pet_preview" == 1 ]]; then
     apt-get install -y --no-install-recommends python3-opencv
 fi
@@ -94,7 +94,12 @@ elif [[ ! -f /home/sunrise/.config/pulse/default.pa ]]; then
     install -m 644 -o sunrise -g sunrise pulse-default.pa /home/sunrise/.config/pulse/default.pa
 fi
 systemctl --user --machine=sunrise@.host restart pulseaudio.service
+if [[ -x /opt/musegadget/venv/bin/python ]]; then
+    install -d -m 755 /etc/systemd/system/musegadget.service.d
+    install -m 644 "$target_dir/scripts/50-pet.conf" /etc/systemd/system/musegadget.service.d/
+fi
 systemctl daemon-reload
+systemctl try-restart musegadget.service
 systemctl enable muse-ui.service
 systemctl disable --now muse-ui-display.service
 systemctl restart muse-ui.service

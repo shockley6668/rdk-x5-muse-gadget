@@ -81,9 +81,9 @@ and `PULSE_SINK` in [muse-ui.service](muse-ui.service) for your hardware.
 ## Controls
 
 - Tap the avatar to pet it. Hold the microphone icon to record; release to send.
-- Optional local wake word: run `sudo bash scripts/install-wakeword.sh` after
-  installing the UI, then say “Hello Muse”. Wait for the beep before speaking.
-  The local voice detector waits for a pause before sending the recording.
+- For hands-free calls, run `sudo bash scripts/install-wakeword.sh` after
+  installing the UI. Say “Hello Muse” and wait for the beep. You can ask follow-up
+  questions on the same call. Tap the microphone icon to hang up.
 - Swipe left for the live recognition view. Tap **Controls** for feeding,
   play, stretching, sleep, focus and find-object controls; **Vision** returns to the image.
 - Swipe left once more for **Depth**. Depth inference runs only while this page is open;

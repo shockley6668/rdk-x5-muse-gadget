@@ -1,26 +1,31 @@
 # Voice setup
 
-`Hello Muse` is detected locally using sherpa-onnx. After the beep, a local
-Silero voice detector waits for speech and two seconds of silence, then sends
-the recording to Muse. A seven-second timeout cancels an empty turn; a turn
-is limited to 25 seconds. Press-to-talk still works. Wake detection pauses while
-Muse is processing or speaking. This detects speech and pauses, not the meaning
-of a sentence; long pauses can still end a turn early.
+Say **Hello Muse**, wait for the beep, then speak. Muse stays on the call for
+follow-up questions. Wait until it finishes speaking before your next question.
+Tap the microphone icon to hang up. Muting or returning to the desktop also
+ends the call. The device disconnects after 45 seconds of inactivity or five
+minutes total.
 
-To enable it after installing the UI:
+After installing the UI, enable hands-free calling on the X5:
 
 ```sh
 sudo bash scripts/install-wakeword.sh
 ```
 
-The installer downloads the Sherpa 3M model and Silero VAD and enables
-`muse-wakeword.service`. Set `MUSE_WAKE_GAIN` in a systemd service override to
-tune the detector for your microphone. Wake detection runs only while the
-backend is connected. Muse dialogue and the default Edge TTS require internet.
+Sherpa detects the keyword locally. During a call the device streams its
+microphone to Muse and plays Muse’s audio through the configured PulseAudio
+sink. Muse handles language detection and turn-taking. The live call uses
+the X5’s dedicated chat. If Muse reports another active call, hang up on the
+other device and say the wake word again.
+
+For a button-operated voice note, hold the microphone icon while the device
+is idle and release to send. The X5 plays the returned MP3. Text-only replies
+use the TTS fallback below.
 
 ## Optional MiMo TTS
 
-By default, replies use Edge TTS. To try Xiaomi MiMo's online TTS, create
+Text-only replies use Edge TTS by default. To use Xiaomi MiMo as the first
+text-to-speech fallback, create
 `/etc/default/muse-ui-tts` with root-only permissions and add:
 
 ```text
@@ -28,7 +33,7 @@ MIMO_API_KEY=your-key-here
 ```
 
 Restart `muse-ui.service` after editing. Do not commit the key. The backend
-uses MiMo for replies when a key is configured and falls back to Edge on errors.
+uses MiMo when text needs to be read aloud and falls back to Edge on errors.
 It sends reply text to Xiaomi. Chinese and English default to the MiMo voices
 `冰糖` and `Mia`; override with `MIMO_VOICE_ZH` and `MIMO_VOICE_EN` in the
 same file. MiMo's availability and pricing are subject to Xiaomi's terms.

@@ -1232,7 +1232,7 @@ static const char *idle_name(muse_wifi_state_t wifi)
     switch (wifi) {
     case MUSE_WIFI_CONNECTED:
         joined = true;
-        return MODE_NAMES[MUSE_MODE_IDLE];
+        return muse_link_state() == MUSE_LINK_OFFLINE ? "" : MODE_NAMES[MUSE_MODE_IDLE];
     case MUSE_WIFI_OFF:
         return "WI-FI OFF";
     case MUSE_WIFI_NO_NETWORK:
@@ -1276,6 +1276,10 @@ static void update_chrome(float now)
     const char *wifi = w.state == MUSE_WIFI_CONNECTED || (joining && (int)(now * 2) % 2 == 0) ? LV_SYMBOL_WIFI : "";
     if (strcmp(wifi, lv_label_get_text(s_wifi_icon)) != 0) {
         lv_label_set_text(s_wifi_icon, wifi);
+    }
+    lv_color_t wifi_color = lv_color_hex(muse_link_state() == MUSE_LINK_ONLINE ? COLOR_ACCENT : COLOR_DIM);
+    if (!lv_color_eq(wifi_color, lv_obj_get_style_text_color(s_wifi_icon, 0))) {
+        lv_obj_set_style_text_color(s_wifi_icon, wifi_color, 0);
     }
     s_idle_name = idle_name(w.state);
     muse_ble_status_t b;

@@ -377,8 +377,9 @@ def describe_result(result: dict) -> str:
 class _Request:
     """Collects the response to one request stream."""
 
-    def __init__(self, done: asyncio.Future) -> None:
+    def __init__(self, done: asyncio.Future, max_bytes: int = MAX_RESPONSE_BYTES) -> None:
         self.done = done
+        self.max_bytes = max_bytes
         self.status = 0
         self.body = bytearray()
 
@@ -394,7 +395,7 @@ class _Request:
         else:
             data, ended = frame.value.data, frame.value.end_body
         self.body += data
-        if len(self.body) > MAX_RESPONSE_BYTES:
+        if len(self.body) > self.max_bytes:
             self.done.set_exception(ValueError("response too large"))
         elif ended:
             self.done.set_result((self.status, bytes(self.body)))

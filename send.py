@@ -6,7 +6,7 @@ import socket
 
 p = argparse.ArgumentParser()
 p.add_argument("message", nargs="?")
-p.add_argument("--action", choices=["start", "stop", "mute"])
+p.add_argument("--action", choices=["start", "stop", "mute", "call", "hangup"])
 a = p.parse_args()
 if not a.action and not a.message:
     p.error("provide a message or --action")

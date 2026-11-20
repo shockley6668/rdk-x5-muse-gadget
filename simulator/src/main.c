@@ -51,7 +51,7 @@
 #define FRAME_STEP_MS 5
 
 static bool apply_setting(const char *, const char *, bool);
-static bool run_scenario(const char *, bool);
+static bool read_settings(const char *, bool, bool);
 static volatile sig_atomic_t s_quit;
 static int64_t s_last_poll;
 static bool s_live_state;
@@ -92,6 +92,7 @@ static void send_pet_command(const char *command)
 
 void muse_backend_desktop(void)
 {
+    send_action("hangup");
     if (s_talk_active) {
         s_talk_active = false;
         send_action("stop");
@@ -141,7 +142,7 @@ static void poll_live_state(void)
     if (st.st_mtime == s_state_mtime && nsec == s_state_nsec) return;
     s_state_mtime = st.st_mtime;
     s_state_nsec = nsec;
-    (void)run_scenario(path, false);
+    (void)read_settings(path, false, false);
 }
 
 static bool s_ready;
@@ -405,6 +406,14 @@ static bool apply_setting(const char *key, const char *value, bool real_time)
     bool flag;
     long number;
     float scalar;
+    /* The wake-word service consumes these fields from the same state file. */
+    if (!strcmp(key, "call")) {
+        return !strcmp(value, "off") || !strcmp(value, "connecting") ||
+               !strcmp(value, "active") || !strcmp(value, "ending");
+    }
+    if (!strcmp(key, "wake_mode")) {
+        return !strcmp(value, "note") || !strcmp(value, "call");
+    }
     if (!strcmp(key, "page")) {
         if (!strcmp(value, "pet") || !strcmp(value, "vision")) {
             sim_services_show_controls(!strcmp(value, "pet"));
@@ -527,7 +536,9 @@ static char *trim(char *text)
     return text;
 }
 
-static bool run_scenario(const char *path, bool real_time)
+/* Test scenarios are strict. A live snapshot is shared with the wake-word
+ * service and can contain fields this version of the display doesn't use. */
+static bool read_settings(const char *path, bool real_time, bool strict)
 {
     FILE *in = fopen(path, "r");
     if (!in) {
@@ -545,6 +556,7 @@ static bool run_scenario(const char *path, bool real_time)
         }
         char *equals = strchr(entry, '=');
         if (!equals) {
+            if (!strict) continue;
             fprintf(stderr, "%s:%u: expected key=value\n", path, line_no);
             ok = false;
             break;
@@ -552,7 +564,7 @@ static bool run_scenario(const char *path, bool real_time)
         *equals = '\0';
         char *key = trim(entry);
         char *value = trim(equals + 1);
-        if (!apply_setting(key, value, real_time)) {
+        if (!apply_setting(key, value, real_time) && strict) {
             fprintf(stderr, "%s:%u: unsupported or invalid setting: %s=%s\n",
                     path, line_no, key, value);
             ok = false;
@@ -690,7 +702,7 @@ int main(int argc, char **argv)
     sim_services_set_ble(MUSE_BLE_OFF, "RDK X5", 0);
     muse_state_set_caption("%s", "");
 
-    if (scenario && !run_scenario(scenario, !headless)) {
+    if (scenario && !read_settings(scenario, !headless, true)) {
         return 2;
     }
     if (headless || screenshot) {

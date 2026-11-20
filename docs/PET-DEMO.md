@@ -371,8 +371,7 @@ OK/V/ThumbUp classifications; OK and V require 600 ms of continuous classificati
 Feeding, cuddling, dancing and stretching reject conflicting gesture actions
 until their animation finishes. An already-awake pet ignores another Palm wake.
 
-Voice notes include instructions for Muse to call `petctl` through the paired
-Linux gadget's `system.run` tool. Try “Start a 25 minute focus timer” or
+Muse can call `petctl` through the paired Linux gadget's `system.run` tool. Try “Start a 25 minute focus timer” or
 “帮我找一下杯子”. Device command permission must be granted in Muse; voice
 recognition and this tool call have not been verified on the assembled unit.
 

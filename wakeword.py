@@ -84,8 +84,10 @@ def make_vad():
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     spotter = make_spotter()
-    vad = make_vad()
-    proc = subprocess.Popen(["parecord", "--raw", "--rate=16000", "--channels=1",
+    vad = None
+    source = os.environ.get("PULSE_SOURCE")
+    device = [f"--device={source}"] if source else []
+    proc = subprocess.Popen(["parecord", *device, "--raw", "--rate=16000", "--channels=1",
                              "--format=s16le", "--latency-msec=80"], stdout=subprocess.PIPE,
                             bufsize=0)
     stream = spotter.create_stream()
@@ -125,7 +127,9 @@ def main():
                     # Another UI action may already have ended this turn.
                     turn = None
                 continue
-            eligible = current.get("link") == "online" and face == "idle"
+            native = current.get("wake_mode") == "call"
+            eligible = (current.get("call", "off") == "off" and current.get("speaker") == "true"
+                        and face in ("idle", "error") and (native or current.get("link") == "online"))
             if not eligible:
                 idle_since = None
                 spotter.reset_stream(stream)
@@ -142,6 +146,11 @@ def main():
                 spotter.decode_stream(stream)
             if spotter.get_result(stream):
                 spotter.reset_stream(stream)
+                if native:
+                    send("call")
+                    idle_since = now + 1
+                    LOG.info("Hello Muse detected; starting native call")
+                    continue
                 # Pause detection during the tone and subsequent reply.
                 tone = MODEL / "wake.wav"
                 if tone.exists() and current.get("speaker") == "true":
@@ -154,6 +163,8 @@ def main():
                         break
                     os.read(proc.stdout.fileno(), CHUNK * 2)
                 send("start")
+                if vad is None:
+                    vad = make_vad()
                 turn = TurnEnd(time.monotonic(), vad)
                 turn_ack_deadline = time.monotonic() + 2
                 idle_since = None

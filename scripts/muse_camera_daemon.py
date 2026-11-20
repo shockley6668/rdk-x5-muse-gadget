@@ -6,6 +6,10 @@ from camera_tool import capture
 from musegadget import cli
 from musegadget.executor import COMMAND_SPECS, Executor
 
+from muse_pet_daemon import advertise_pet_controls
+
+advertise_pet_controls(COMMAND_SPECS)
+
 COMMAND_SPECS['camera.capture'] = {
     'description': ('Capture a fresh left/right stereo JPEG only when the user '
                     'asks to see or describe the camera view. The image is returned as base64.'),
